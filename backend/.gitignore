@@ -1,0 +1,35 @@
+# dependencies
+/node_modules
+
+# build output (nest build)
+/dist
+
+# env files — never commit secrets (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# test coverage
+/coverage
+
+# typescript build info
+*.tsbuildinfo
+
+# prisma Studio / migrate shadow db artifacts
+prisma/.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json

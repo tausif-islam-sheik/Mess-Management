@@ -1,0 +1,163 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  MANAGER
+  BAZAR_MANAGER
+  MEMBER
+}
+
+enum MealType {
+  LUNCH
+  DINNER
+  BOTH
+}
+
+enum CostCategory {
+  BAZAR
+  UTILITY
+  REPAIR
+  OTHER
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String
+  phone          String        @unique
+  email          String?
+  pin            String          @default("1234")
+  role           Role          @default(MEMBER)
+  messId         String?
+  mess           Mess?         @relation(fields: [messId], references: [id])
+  depositBalance Float         @default(0.0)
+  votes          Vote[]
+  bazarCosts     BazarCost[]   @relation("PaidByBazar")
+  utilityCosts   UtilityCost[] @relation("PaidByUtility")
+  deposits       Deposit[]
+  bazarDuty      BazarRoster[]
+  auditLogs      AuditLog[]    @relation("Actor")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Mess {
+  id             String          @id @default(cuid())
+  name           String
+  currency       String          @default("BDT")
+  managerId      String
+  members        User[]
+  polls          MealPoll[]
+  bazarCosts     BazarCost[]
+  utilityCosts   UtilityCost[]
+  deposits       Deposit[]
+  monthlyReports MonthlyReport[]
+  auditLogs      AuditLog[]
+  bazarRosters   BazarRoster[]
+  createdAt      DateTime        @default(now())
+}
+
+model MealPoll {
+  id         String    @id @default(cuid())
+  messId     String
+  mess       Mess      @relation(fields: [messId], references: [id])
+  date       DateTime
+  mealType   MealType
+  cutoffTime DateTime
+  isOpen     Boolean   @default(true)
+  votes      Vote[]
+  token      String    @unique @default(cuid())
+  createdAt  DateTime  @default(now())
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  pollId      String
+  poll        MealPoll @relation(fields: [pollId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  lunchCount  Int      @default(0)
+  dinnerCount Int      @default(0)
+  guestCount  Int      @default(0)
+  votedAt     DateTime @default(now())
+}
+
+model BazarCost {
+  id          String   @id @default(cuid())
+  messId      String
+  mess        Mess     @relation(fields: [messId], references: [id])
+  date        DateTime
+  amount      Float
+  description String
+  receiptUrl  String?
+  paidById    String
+  paidBy      User     @relation("PaidByBazar", fields: [paidById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model UtilityCost {
+  id          String       @id @default(cuid())
+  messId      String
+  mess        Mess         @relation(fields: [messId], references: [id])
+  month       String
+  category    CostCategory
+  title       String
+  amount      Float
+  paidById    String
+  paidBy      User         @relation("PaidByUtility", fields: [paidById], references: [id])
+  receiptUrl  String?
+  createdAt   DateTime     @default(now())
+}
+
+model Deposit {
+  id        String   @id @default(cuid())
+  messId    String
+  mess      Mess     @relation(fields: [messId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  date      DateTime @default(now())
+  method    String   @default("bKash")
+  note      String?
+}
+
+model MonthlyReport {
+  id           String   @id @default(cuid())
+  messId       String
+  mess         Mess     @relation(fields: [messId], references: [id])
+  monthYear    String
+  totalMeals   Int
+  totalBazar   Float
+  mealRate     Float
+  totalUtility Float
+  fileUrl      String?
+  generatedAt  DateTime @default(now())
+}
+
+model BazarRoster {
+  id        String   @id @default(cuid())
+  messId    String
+  mess      Mess     @relation(fields: [messId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("PENDING")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  messId    String
+  mess      Mess     @relation(fields: [messId], references: [id])
+  actorId   String
+  actor     User     @relation("Actor", fields: [actorId], references: [id])
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+}
