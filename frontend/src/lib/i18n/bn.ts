@@ -3,6 +3,7 @@ export const bn = {
   appSubtitle: "হোটেল ও শেয়ার্ড মেস ম্যানেজমেন্ট সিস্টেম",
   nav: {
     dashboard: "ড্যাশবোর্ড",
+    members: "সদস্যরা",
     polls: "মিল ভোট ও পোল",
     costs: "খরচ হিসাব",
     deposits: "জমা ও বকেয়া",
@@ -37,7 +38,7 @@ export const bn = {
   },
   polls: {
     title: "দৈনিক মিল পোল",
-    subtitle: "হোয়াটসঅ্যাপ এর মাধ্যমে মিল গণনা ও পোলিং",
+    subtitle: "দৈনিক মিল গণনা ও পোলিং (হোয়াটসঅ্যাপ ইন্টিগ্রেশন শীঘ্রই আসছে)",
     createNew: "নতুন পোল তৈরি",
     openPolls: "চলতি পোল",
     closedPolls: "পূর্ববর্তী পোল",

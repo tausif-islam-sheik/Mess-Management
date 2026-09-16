@@ -33,13 +33,50 @@ export class PollsService {
     return { ...poll, members };
   }
 
+  /**
+   * Resolve the cutoff value to a real Date. Accepts a full date-time string
+   * or a time-of-day ("10:00 AM", "10 AM", "22:00") which is combined with
+   * the poll date. Plain-text cutoffs like "10:00 AM" are NOT parseable by
+   * `new Date()`, so they are handled explicitly.
+   */
+  private resolveCutoff(date: Date, cutoffTime: string): Date {
+    const direct = new Date(cutoffTime);
+    if (!Number.isNaN(direct.getTime())) return direct;
+
+    const trimmed = cutoffTime.trim();
+    const twelve = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*([aApP])\.?\s*[mM]?\.?$/);
+    const twentyFour = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+
+    let hours: number;
+    let minutes = 0;
+    if (twelve) {
+      hours = parseInt(twelve[1], 10) % 12;
+      if (twelve[2] !== undefined) minutes = parseInt(twelve[2], 10);
+      if (/^[pP]/.test(twelve[3])) hours += 12;
+    } else if (twentyFour) {
+      hours = parseInt(twentyFour[1], 10);
+      minutes = parseInt(twentyFour[2], 10);
+    } else {
+      throw new BadRequestException('Invalid cutoff time. Use e.g. "10:00 AM" or "22:00".');
+    }
+    if (hours > 23 || minutes > 59) {
+      throw new BadRequestException('Invalid cutoff time. Use e.g. "10:00 AM" or "22:00".');
+    }
+    const resolved = new Date(date);
+    resolved.setHours(hours, minutes, 0, 0);
+    return resolved;
+  }
+
   async create(messId: string, actorId: string, dto: CreatePollDto) {
+    if (!messId) throw new BadRequestException('No mess selected for this account');
+    const date = new Date(dto.date);
+    if (Number.isNaN(date.getTime())) throw new BadRequestException('Invalid poll date');
     const poll = await this.prisma.mealPoll.create({
       data: {
         messId,
-        date: new Date(dto.date),
+        date,
         mealType: dto.mealType,
-        cutoffTime: new Date(dto.cutoffTime),
+        cutoffTime: this.resolveCutoff(date, dto.cutoffTime),
         isOpen: true,
       },
     });
@@ -83,11 +120,19 @@ export class PollsService {
     return vote;
   }
 
-  async close(messId: string, actorId: string, pollId: string) {
-    const poll = await this.prisma.mealPoll.findUnique({ where: { id: pollId } });
+  async close(messId: string, actorId: string, pollId: string) {    const poll = await this.prisma.mealPoll.findUnique({ where: { id: pollId } });
     if (!poll) throw new NotFoundException('Poll not found');
     const updated = await this.prisma.mealPoll.update({ where: { id: pollId }, data: { isOpen: false } });
     await this.audit.log(messId, actorId, 'POLL_CLOSED', `Closed meal poll for ${poll.date.toISOString()}`);
     return updated;
+  }
+
+  async remove(messId: string, actorId: string, pollId: string) {
+    const poll = await this.prisma.mealPoll.findUnique({ where: { id: pollId } });
+    if (!poll) throw new NotFoundException('Poll not found');
+    await this.prisma.vote.deleteMany({ where: { pollId } });
+    await this.prisma.mealPoll.delete({ where: { id: pollId } });
+    await this.audit.log(messId, actorId, 'POLL_REMOVED', `Removed meal poll for ${poll.date.toISOString()}`);
+    return { deleted: true };
   }
 }

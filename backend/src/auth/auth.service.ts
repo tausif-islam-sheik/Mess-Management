@@ -31,29 +31,30 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  private async verifyPin(plainPin: string, stored: string): Promise<boolean> {
+  private async verifyHash(plain: string, stored: string): Promise<boolean> {
     if (stored.startsWith('$2')) {
-      return bcrypt.compare(plainPin, stored);
+      return bcrypt.compare(plain, stored);
     }
-    return plainPin === stored;
+    return plain === stored;
   }
 
   async login(dto: LoginDto) {
-    const identifier = dto.identifier.trim();
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ phone: identifier }, { email: identifier }],
-      },
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email },
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const ok = await this.verifyPin(dto.pin, user.pin);
+    // New password field first, fall back to legacy PIN hash so existing
+    // accounts keep working until a password is set for them.
+    const stored = user.password ?? user.pin;
+    const ok = await this.verifyHash(dto.password, stored);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
-    // Auto-upgrade legacy plain-text PINs to bcrypt hashes
-    if (!user.pin.startsWith('$2')) {
-      const hash = await bcrypt.hash(dto.pin, 10);
-      await this.prisma.user.update({ where: { id: user.id }, data: { pin: hash } });
+    // Upgrade legacy PIN-based credentials to the password field on success.
+    if (!user.password) {
+      const hash = await bcrypt.hash(dto.password, 10);
+      await this.prisma.user.update({ where: { id: user.id }, data: { password: hash } });
     }
 
     const payload = { sub: user.id, role: user.role, messId: user.messId };

@@ -20,6 +20,7 @@ export interface Mess {
   name: string;
   currency: string;
   managerId: string;
+  logoUrl?: string;
   createdAt: string;
 }
 

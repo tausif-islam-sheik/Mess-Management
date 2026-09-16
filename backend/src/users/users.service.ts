@@ -18,13 +18,15 @@ export class UsersService {
   }
 
   async create(messId: string, actorId: string, dto: CreateUserDto) {
+    const password = dto.password?.trim() ? dto.password : 'Member@123';
     const pin = dto.pin?.trim() ? dto.pin : '1234';
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
         phone: dto.phone,
-        email: dto.email,
+        email: dto.email.trim().toLowerCase(),
         pin: await bcrypt.hash(pin, 10),
+        password: await bcrypt.hash(password, 10),
         role: (dto.role ?? 'MEMBER') as Role,
         messId,
       },
@@ -39,8 +41,9 @@ export class UsersService {
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.phone !== undefined) data.phone = dto.phone;
-    if (dto.email !== undefined) data.email = dto.email;
+    if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase();
     if (dto.role !== undefined) data.role = dto.role;
+    if (dto.password?.trim()) data.password = await bcrypt.hash(dto.password, 10);
     if (dto.pin?.trim()) data.pin = await bcrypt.hash(dto.pin, 10);
     const user = await this.prisma.user.update({ where: { id }, data });
     await this.audit.log(messId, actorId, 'MEMBER_UPDATED', `Updated member ${user.name}`);

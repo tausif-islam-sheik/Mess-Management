@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDepositDto } from './dto/create-deposit.dto';
+import { UpdateDepositDto } from './dto/update-deposit.dto';
 
 @Injectable()
 export class DepositsService {
@@ -34,5 +35,27 @@ export class DepositsService {
       `Recorded deposit ৳${dto.amount} for ${member?.name ?? 'member'} via ${dto.method ?? 'bKash'}`,
     );
     return deposit;
+  }
+
+  async update(messId: string, actorId: string, id: string, dto: UpdateDepositDto) {
+    const existing = await this.prisma.deposit.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Deposit not found');
+    const data: Record<string, unknown> = {};
+    if (dto.userId !== undefined) data.userId = dto.userId;
+    if (dto.amount !== undefined) data.amount = dto.amount;
+    if (dto.method !== undefined) data.method = dto.method;
+    if (dto.note !== undefined) data.note = dto.note;
+    if (dto.date !== undefined) data.date = new Date(dto.date);
+    const deposit = await this.prisma.deposit.update({ where: { id }, data });
+    await this.audit.log(messId, actorId, 'DEPOSIT_UPDATED', `Updated deposit ৳${deposit.amount} (${deposit.id})`);
+    return deposit;
+  }
+
+  async remove(messId: string, actorId: string, id: string) {
+    const existing = await this.prisma.deposit.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Deposit not found');
+    await this.prisma.deposit.delete({ where: { id } });
+    await this.audit.log(messId, actorId, 'DEPOSIT_REMOVED', `Removed deposit ৳${existing.amount} (${existing.id})`);
+    return { deleted: true };
   }
 }

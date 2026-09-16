@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Vote, Plus, Share2, MessageSquare, Check, X, Clock, ExternalLink, Send } from "lucide-react";
-import { generatePollWhatsAppShareLink, generateReminderWhatsAppLink } from "@/lib/whatsapp";
+import { Vote, Plus, Share2, MessageSquare, Check, X, Clock, ExternalLink, Send, CheckCircle2, Users, BarChart3, Trash2, Lock } from "lucide-react";
 import { MealType } from "@/lib/types";
+import { StatsCards } from "@/components/Dashboard/StatsCards";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export const PollManager: React.FC = () => {
-  const { polls, createPoll, castVote, users, currentUser } = useMess();
+  const { polls, createPoll, closePoll, deletePoll, castVote, users, currentUser } = useMess();
   const { t } = useLanguage();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -23,13 +24,23 @@ export const PollManager: React.FC = () => {
   const [cutoffTime, setCutoffTime] = useState("10:00 AM");
 
   const [sharePollModal, setSharePollModal] = useState<string | null>(null);
+  const [createError, setCreateError] = useState("");
+  const [deletePollId, setDeletePollId] = useState<string | null>(null);
 
   const activePoll = polls.find((p) => p.isOpen) || polls[0];
+  const openCount = polls.filter((p) => p.isOpen).length;
+  const totalVotes = polls.reduce((sum, p) => sum + p.votes.length, 0);
+  const activeVotes = activePoll ? activePoll.votes.length : 0;
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    createPoll(pollDate, mealType, cutoffTime);
-    setIsCreateOpen(false);
+    setCreateError("");
+    try {
+      await createPoll(pollDate, mealType, cutoffTime);
+      setIsCreateOpen(false);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create poll. Please try again.");
+    }
   };
 
   const currentOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
@@ -50,6 +61,40 @@ export const PollManager: React.FC = () => {
           <Plus className="h-4 w-4" /> {t.polls.createNew}
         </Button>
       </div>
+
+      {/* Stats */}
+      <StatsCards
+        items={[
+          {
+            title: "Total Polls",
+            value: String(polls.length),
+            subtext: "All time",
+            icon: BarChart3,
+            color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-400",
+          },
+          {
+            title: "Open Polls",
+            value: String(openCount),
+            subtext: "Accepting votes",
+            icon: CheckCircle2,
+            color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400",
+          },
+          {
+            title: "Total Votes",
+            value: String(totalVotes),
+            subtext: "Across all polls",
+            icon: Vote,
+            color: "from-purple-500/20 to-indigo-500/10 border-purple-500/30 text-purple-400",
+          },
+          {
+            title: "Active Poll Votes",
+            value: `${activeVotes}/${users.length}`,
+            subtext: "Members voted",
+            icon: Users,
+            color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400",
+          },
+        ]}
+      />
 
       {/* Active Poll Card */}
       {activePoll && (
@@ -73,15 +118,19 @@ export const PollManager: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={generatePollWhatsAppShareLink(activePoll, currentOrigin)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/40"
+              {/* TODO: WhatsApp integration coming soon — re-enable share link */}
+              <button
+                type="button"
+                disabled
+                title="WhatsApp integration coming soon"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-400 cursor-not-allowed opacity-70 border border-slate-700"
               >
                 <Share2 className="h-4 w-4" />
                 {t.polls.shareWhatsApp}
-              </a>
+                <span className="rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] px-1.5 py-0.5 font-bold">
+                  Coming Soon
+                </span>
+              </button>
 
               <a
                 href={`${currentOrigin}/vote/${activePoll.token}`}
@@ -92,6 +141,26 @@ export const PollManager: React.FC = () => {
                 <ExternalLink className="h-3.5 w-3.5 text-cyan-400" />
                 Public Voting Link
               </a>
+
+              {activePoll.isOpen && (
+                <button
+                  type="button"
+                  onClick={() => closePoll(activePoll.id)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  Close Poll
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setDeletePollId(activePoll.id)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/20 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
             </div>
           </CardHeader>
 
@@ -135,14 +204,12 @@ export const PollManager: React.FC = () => {
                           <Check className="h-3 w-3" /> Voted
                         </Badge>
                       ) : (
-                        <a
-                          href={generateReminderWhatsAppLink(user, activePoll, currentOrigin)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 hover:underline bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20"
+                        <span
+                          title="WhatsApp reminder coming soon"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-700 cursor-not-allowed opacity-70"
                         >
-                          <Send className="h-2.5 w-2.5" /> Ping WA
-                        </a>
+                          <Send className="h-2.5 w-2.5" /> Ping WA · Soon
+                        </span>
                       )}
                     </div>
 
@@ -197,9 +264,14 @@ export const PollManager: React.FC = () => {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         title={t.polls.createNew}
-        description="Schedule daily meal poll and auto-generate WhatsApp share intent link."
+        description="Schedule daily meal poll and share the public voting link."
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
+          {createError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+              {createError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Poll Date</label>
             <Input type="date" value={pollDate} onChange={(e) => setPollDate(e.target.value)} required />
@@ -229,6 +301,17 @@ export const PollManager: React.FC = () => {
           </div>
         </form>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deletePollId}
+        title="Delete poll?"
+        message="This poll and all its votes will be permanently removed."
+        onCancel={() => setDeletePollId(null)}
+        onConfirm={async () => {
+          if (deletePollId) await deletePoll(deletePollId);
+          setDeletePollId(null);
+        }}
+      />
     </div>
   );
 };

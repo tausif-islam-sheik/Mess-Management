@@ -1,5 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
 import { Public } from '../auth/public.decorator';
 import { CreatePollDto } from './dto/create-poll.dto';
 import { VoteDto } from './dto/vote.dto';
@@ -34,5 +33,10 @@ export class PollsController {
   @Patch(':id/close')
   close(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.polls.close(user.messId ?? '', user.sub, id);
+  }
+
+  @Delete(':id')
+  remove(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.polls.remove(user.messId ?? '', user.sub, id);
   }
 }

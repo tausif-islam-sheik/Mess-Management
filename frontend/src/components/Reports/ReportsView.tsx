@@ -5,11 +5,11 @@ import { useMess } from "@/context/MessContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Download, Share2, FileText, Sparkles, CheckCircle2 } from "lucide-react";
+import { FileSpreadsheet, Download, Share2, FileText, Sparkles, CheckCircle2, Utensils, ShoppingCart, Calculator, Zap } from "lucide-react";
 import { exportMonthlyReportToExcel } from "@/lib/excel";
 import { exportMonthlyReportToPDF } from "@/lib/pdf";
-import { generateReportWhatsAppLink } from "@/lib/whatsapp";
 import { formatCurrency } from "@/lib/utils";
+import { StatsCards } from "@/components/Dashboard/StatsCards";
 
 export const ReportsView: React.FC = () => {
   const {
@@ -52,8 +52,6 @@ export const ReportsView: React.FC = () => {
     );
   };
 
-  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
@@ -75,16 +73,54 @@ export const ReportsView: React.FC = () => {
             <FileText className="h-4 w-4 text-cyan-400" /> {t.reports.downloadPdf}
           </Button>
 
-          <a
-            href={generateReportWhatsAppLink(monthYear, currentOrigin)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          {/* TODO: WhatsApp integration coming soon — re-enable broadcast link */}
+          <button
+            type="button"
+            disabled
+            title="WhatsApp integration coming soon"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/60 px-3.5 py-2 text-xs font-bold text-slate-500 cursor-not-allowed opacity-70"
           >
             <Share2 className="h-4 w-4" /> Broadcast Report on WhatsApp
-          </a>
+            <span className="rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] px-1.5 py-0.5 font-bold">
+              Coming Soon
+            </span>
+          </button>
         </div>
       </div>
+
+      {/* Stats */}
+      <StatsCards
+        items={[
+          {
+            title: "Total Bazar",
+            value: formatCurrency(totalBazarCost),
+            subtext: `${bazarCosts.length} entries`,
+            icon: ShoppingCart,
+            color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400",
+          },
+          {
+            title: "Total Meals",
+            value: String(totalMeals),
+            subtext: `${memberSummaries.length} members`,
+            icon: Utensils,
+            color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400",
+          },
+          {
+            title: "Meal Rate",
+            value: formatCurrency(mealRate),
+            subtext: "Per meal cost",
+            icon: Calculator,
+            color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-400",
+          },
+          {
+            title: "Utility Cost",
+            value: formatCurrency(totalUtilityCost),
+            subtext: `${utilityCosts.length} bills`,
+            icon: Zap,
+            color: "from-purple-500/20 to-indigo-500/10 border-purple-500/30 text-purple-400",
+          },
+        ]}
+      />
 
       {/* Statement Summary Card */}
       <Card className="bg-slate-900/90 border-slate-800 p-6">
@@ -95,28 +131,6 @@ export const ReportsView: React.FC = () => {
             </span>
             <h3 className="text-xl font-bold text-white mt-1">{monthYear} Final Audit</h3>
             <p className="text-xs text-slate-400">Mess: {mess.name}</p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <div className="text-[10px] text-slate-400">Total Bazar</div>
-              <div className="text-sm font-extrabold text-emerald-400">{formatCurrency(totalBazarCost)}</div>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <div className="text-[10px] text-slate-400">Total Meals</div>
-              <div className="text-sm font-extrabold text-amber-400">{totalMeals}</div>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <div className="text-[10px] text-slate-400">Meal Rate</div>
-              <div className="text-sm font-extrabold text-cyan-400">{formatCurrency(mealRate)}</div>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <div className="text-[10px] text-slate-400">Utility Cost</div>
-              <div className="text-sm font-extrabold text-purple-400">{formatCurrency(totalUtilityCost)}</div>
-            </div>
           </div>
         </div>
 

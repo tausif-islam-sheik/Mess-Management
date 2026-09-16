@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRosterDto } from './dto/create-roster.dto';
+import { UpdateRosterDto } from './dto/update-roster.dto';
 
 @Injectable()
 export class RosterService {
@@ -41,5 +42,26 @@ export class RosterService {
     const updated = await this.prisma.bazarRoster.update({ where: { id }, data: { status } });
     await this.audit.log(messId, actorId, 'ROSTER_STATUS', `Marked Bazar duty ${id} as ${status}`);
     return updated;
+  }
+
+  async update(messId: string, actorId: string, id: string, dto: UpdateRosterDto) {
+    const existing = await this.prisma.bazarRoster.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Roster entry not found');
+    const data: Record<string, unknown> = {};
+    if (dto.userId !== undefined) data.userId = dto.userId;
+    if (dto.startDate !== undefined) data.startDate = new Date(dto.startDate);
+    if (dto.endDate !== undefined) data.endDate = new Date(dto.endDate);
+    if (dto.status !== undefined) data.status = dto.status;
+    const updated = await this.prisma.bazarRoster.update({ where: { id }, data });
+    await this.audit.log(messId, actorId, 'ROSTER_UPDATED', `Updated Bazar duty ${id}`);
+    return updated;
+  }
+
+  async remove(messId: string, actorId: string, id: string) {
+    const existing = await this.prisma.bazarRoster.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Roster entry not found');
+    await this.prisma.bazarRoster.delete({ where: { id } });
+    await this.audit.log(messId, actorId, 'ROSTER_REMOVED', `Removed Bazar duty ${id}`);
+    return { deleted: true };
   }
 }

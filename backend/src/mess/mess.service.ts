@@ -23,6 +23,7 @@ export class MessService {
     const data: Record<string, string> = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.currency !== undefined) data.currency = dto.currency.trim();
+    if (dto.logoUrl !== undefined) data.logoUrl = dto.logoUrl.trim();
     const updated = await this.prisma.mess.update({ where: { id: messId }, data });
     await this.audit.log(messId, actorId, 'MESS_UPDATED', `Updated mess settings (name: "${updated.name}")`);
     return updated;

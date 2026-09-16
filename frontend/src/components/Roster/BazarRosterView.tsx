@@ -9,11 +9,15 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus, UserCheck, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { CalendarDays, Plus, UserCheck, ShieldAlert, CheckCircle2, Clock, ListOrdered } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { StatsCards } from "@/components/Dashboard/StatsCards";
+import { RowActions } from "@/components/ui/row-actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { BazarRoster } from "@/lib/types";
 
 export const BazarRosterView: React.FC = () => {
-  const { roster, assignBazarRoster, users } = useMess();
+  const { roster, assignBazarRoster, updateRosterEntry, deleteRosterEntry, users } = useMess();
   const { t } = useLanguage();
 
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -22,6 +26,45 @@ export const BazarRosterView: React.FC = () => {
   const [endDate, setEndDate] = useState(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
+
+  // Edit / Delete state
+  const [editingEntry, setEditingEntry] = useState<BazarRoster | null>(null);
+  const [editUser, setEditUser] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editStatus, setEditStatus] = useState<BazarRoster["status"]>("PENDING");
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+  const [formError, setFormError] = useState("");
+
+  const activeCount = roster.filter((r) => r.status === "ACTIVE").length;
+  const pendingCount = roster.filter((r) => r.status === "PENDING").length;
+  const completedCount = roster.filter((r) => r.status === "COMPLETED").length;
+
+  const openEditEntry = (r: BazarRoster) => {
+    setEditingEntry(r);
+    setEditUser(r.userId);
+    setEditStart(r.startDate);
+    setEditEnd(r.endDate);
+    setEditStatus(r.status);
+    setFormError("");
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEntry) return;
+    setFormError("");
+    try {
+      await updateRosterEntry(editingEntry.id, {
+        userId: editUser,
+        startDate: editStart,
+        endDate: editEnd,
+        status: editStatus,
+      });
+      setEditingEntry(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to update duty.");
+    }
+  };
 
   const activeManager = roster.find((r) => r.status === "ACTIVE") || roster[0];
 
@@ -47,6 +90,40 @@ export const BazarRosterView: React.FC = () => {
           <Plus className="h-4 w-4" /> {t.roster.assignDuty}
         </Button>
       </div>
+
+      {/* Stats */}
+      <StatsCards
+        items={[
+          {
+            title: "Total Duties",
+            value: String(roster.length),
+            subtext: "Assigned rotations",
+            icon: ListOrdered,
+            color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-400",
+          },
+          {
+            title: "Active",
+            value: String(activeCount),
+            subtext: "On duty now",
+            icon: UserCheck,
+            color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400",
+          },
+          {
+            title: "Pending",
+            value: String(pendingCount),
+            subtext: "Upcoming",
+            icon: Clock,
+            color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400",
+          },
+          {
+            title: "Completed",
+            value: String(completedCount),
+            subtext: "Finished duties",
+            icon: CheckCircle2,
+            color: "from-purple-500/20 to-indigo-500/10 border-purple-500/30 text-purple-400",
+          },
+        ]}
+      />
 
       {/* Active Duty Card */}
       {activeManager && (
@@ -91,6 +168,7 @@ export const BazarRosterView: React.FC = () => {
                   <th className="py-3 px-3">Start Date</th>
                   <th className="py-3 px-3">End Date</th>
                   <th className="py-3 px-3 text-center">Status</th>
+                  <th className="py-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -103,6 +181,9 @@ export const BazarRosterView: React.FC = () => {
                       <Badge variant={r.status === "ACTIVE" ? "emerald" : "default"}>
                         {r.status}
                       </Badge>
+                    </td>
+                    <td className="py-3 px-3">
+                      <RowActions onEdit={() => openEditEntry(r)} onDelete={() => setDeleteEntryId(r.id)} />
                     </td>
                   </tr>
                 ))}
@@ -151,6 +232,71 @@ export const BazarRosterView: React.FC = () => {
           </div>
         </form>
       </Dialog>
+
+      {/* Edit Duty Modal */}
+      <Dialog
+        isOpen={!!editingEntry}
+        onClose={() => setEditingEntry(null)}
+        title="Edit Bazar Duty"
+        description="Reassign or reschedule this duty entry."
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+              {formError}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Select Member</label>
+            <Select value={editUser} onChange={(e) => setEditUser(e.target.value)}>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role})
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Duty Start Date</label>
+            <Input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Duty End Date</label>
+            <Input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Status</label>
+            <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value as BazarRoster["status"])}>
+              <option value="PENDING">Pending</option>
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setEditingEntry(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="emerald">
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteEntryId}
+        title="Delete duty entry?"
+        message="This bazar duty assignment will be permanently removed."
+        onCancel={() => setDeleteEntryId(null)}
+        onConfirm={async () => {
+          if (deleteEntryId) await deleteRosterEntry(deleteEntryId);
+          setDeleteEntryId(null);
+        }}
+      />
     </div>
   );
 };

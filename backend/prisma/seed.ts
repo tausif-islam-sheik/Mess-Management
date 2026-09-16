@@ -28,7 +28,7 @@ async function main() {
     },
   });
 
-  // Super Admin (PIN 9999, stored as bcrypt hash)
+  // Super Admin (email + password login, JWT-issued; PIN kept for legacy compat)
   const superAdmin = await prisma.user.create({
     data: {
       id: 'user_super_admin',
@@ -36,6 +36,7 @@ async function main() {
       phone: '+8801999999999',
       email: 'admin@messmanager.com',
       pin: await bcrypt.hash('9999', 10),
+      password: await bcrypt.hash('Admin@123', 10),
       role: Role.SUPER_ADMIN,
       messId: mess.id,
       depositBalance: 0,
@@ -53,7 +54,7 @@ async function main() {
 
   console.log('Seed complete:');
   console.log(`- Mess: ${mess.name} (${mess.id})`);
-  console.log(`- Super Admin: admin@messmanager.com / +8801999999999 (PIN 9999)`);
+  console.log(`- Super Admin: admin@messmanager.com (password Admin@123)`);
 }
 
 main()

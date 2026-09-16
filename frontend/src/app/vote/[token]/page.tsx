@@ -95,7 +95,7 @@ function DirectVoteContent({ token }: { token: string }) {
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center p-6">
           <h2 className="text-lg font-bold text-rose-400">Invalid or Expired Poll Link</h2>
-          <p className="text-xs text-slate-400 mt-2">Please ask your Mess Manager for an updated WhatsApp poll link.</p>
+          <p className="text-xs text-slate-400 mt-2">Please ask your Mess Manager for an updated meal poll link.</p>
           <Link href="/" className="mt-4 inline-block text-xs font-bold text-emerald-400 underline">
             Go to Mess Dashboard
           </Link>
@@ -131,9 +131,6 @@ function DirectVoteContent({ token }: { token: string }) {
       <div className="max-w-md w-full space-y-4">
         {/* Top Header */}
         <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold text-2xl shadow-xl shadow-emerald-950/50 mb-2">
-            🍽️
-          </div>
           <h1 className="text-xl font-extrabold text-white">Shanti Nibash Hostel Mess</h1>
           <p className="text-xs text-emerald-400 font-medium">Daily Meal Voting Link</p>
         </div>

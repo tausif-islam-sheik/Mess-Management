@@ -5,6 +5,7 @@ export const INITIAL_MESS: Mess = {
   name: "New Shared Mess Group",
   currency: "BDT",
   managerId: "user_super_admin",
+  logoUrl: undefined,
   createdAt: new Date().toISOString(),
 };
 

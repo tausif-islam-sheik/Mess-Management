@@ -44,9 +44,9 @@ interface MessContextType {
   loading: boolean;
   /** True when talking to the NestJS API instead of local demo data. */
   apiMode: boolean;
-  login: (phone: string, pin: string) => Promise<boolean>;
-  loginMember: (phone: string, pin: string) => Promise<boolean>;
-  loginSuperAdmin: (emailOrPhone: string, pin: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
+  loginMember: (email: string, password: string) => Promise<boolean>;
+  loginSuperAdmin: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setCurrentUserRole: (role: Role) => Promise<void>;
   setCurrentUserId: (userId: string) => void;
@@ -67,12 +67,27 @@ interface MessContextType {
 
   // Actions
   updateMessName: (name: string) => Promise<void>;
+  updateMessCurrency: (currency: string) => Promise<void>;
+  updateMessLogo: (logoUrl: string) => Promise<void>;
   createPoll: (date: string, mealType: MealType, cutoffTime: string) => Promise<void>;
+  closePoll: (pollId: string) => Promise<void>;
+  deletePoll: (pollId: string) => Promise<void>;
   castVote: (pollId: string, userId: string, lunch: number, dinner: number, guest: number) => Promise<void>;
   addBazarCost: (amount: number, description: string, paidById: string, receiptUrl?: string) => Promise<void>;
+  updateBazarCost: (id: string, patch: Partial<Pick<BazarCost, "amount" | "description" | "paidById" | "receiptUrl" | "date">>) => Promise<void>;
+  deleteBazarCost: (id: string) => Promise<void>;
   addUtilityCost: (title: string, amount: number, category: CostCategory, paidById: string) => Promise<void>;
+  updateUtilityCost: (id: string, patch: Partial<Pick<UtilityCost, "title" | "amount" | "category" | "paidById" | "month" | "receiptUrl">>) => Promise<void>;
+  deleteUtilityCost: (id: string) => Promise<void>;
   addDeposit: (userId: string, amount: number, method: "bKash" | "Nagad" | "Rocket" | "Cash" | "Bank", note?: string) => Promise<void>;
+  updateDeposit: (id: string, patch: Partial<Pick<Deposit, "userId" | "amount" | "method" | "note">>) => Promise<void>;
+  deleteDeposit: (id: string) => Promise<void>;
   assignBazarRoster: (userId: string, startDate: string, endDate: string) => Promise<void>;
+  updateRosterEntry: (id: string, patch: Partial<Pick<BazarRoster, "userId" | "startDate" | "endDate" | "status">>) => Promise<void>;
+  deleteRosterEntry: (id: string) => Promise<void>;
+  updateMember: (id: string, patch: Partial<Pick<User, "name" | "phone" | "email" | "role">>) => Promise<void>;
+  addMember: (name: string, phone: string, email: string, password: string, role: Role) => Promise<void>;
+  deleteMember: (id: string) => Promise<void>;
   resetToDemoData: () => void;
 }
 
@@ -162,6 +177,8 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
 
   const apiModeRef = useRef(false);
+  /** Set once the boot effect has finished (loaded API or local data). Gates persistence. */
+  const bootedRef = useRef(false);
 
   // ----- API loaders -----
 
@@ -270,10 +287,10 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loadMess = useCallback(async () => {
-    const m = await apiFetch<{ id: string; name: string; currency: string; managerId: string; createdAt: string }>(
+    const m = await apiFetch<{ id: string; name: string; currency: string; managerId: string; logoUrl?: string | null; createdAt: string }>(
       "/mess/current"
     );
-    setMess({ ...m, createdAt: String(m.createdAt) });
+    setMess({ ...m, logoUrl: m.logoUrl ?? undefined, createdAt: String(m.createdAt) });
     return m.id;
   }, []);
 
@@ -312,6 +329,7 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
           if (saved) {
             const parsed = JSON.parse(saved);
+            if (parsed.mess) setMess(parsed.mess);
             if (parsed.users) setUsers(parsed.users);
             if (parsed.polls) setPolls(parsed.polls);
             if (parsed.bazarCosts) setBazarCosts(parsed.bazarCosts);
@@ -326,25 +344,29 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn("Could not load stored state", e);
         }
       }
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        bootedRef.current = true;
+        setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [loadCollections, loadMess]);
 
-  // Sync demo state to localStorage (demo mode only)
+  // Sync demo state to localStorage (demo mode only, and only after boot
+  // has loaded — otherwise the initial mock state would wipe saved data).
   useEffect(() => {
-    if (apiModeRef.current) return;
+    if (!bootedRef.current || apiModeRef.current) return;
     try {
       localStorage.setItem(
         LOCAL_STORAGE_KEY,
-        JSON.stringify({ users, polls, bazarCosts, utilityCosts, deposits, roster, auditLogs, currentUserId, isAuthenticated })
+        JSON.stringify({ mess, users, polls, bazarCosts, utilityCosts, deposits, roster, auditLogs, currentUserId, isAuthenticated })
       );
     } catch (e) {
       console.warn("Could not save state", e);
     }
-  }, [users, polls, bazarCosts, utilityCosts, deposits, roster, auditLogs, currentUserId, isAuthenticated]);
+  }, [mess, users, polls, bazarCosts, utilityCosts, deposits, roster, auditLogs, currentUserId, isAuthenticated]);
 
   const currentUser = useMemo(() => {
     return users.find((u) => u.id === currentUserId) || users[0];
@@ -353,12 +375,12 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ----- Auth -----
 
   const login = useCallback(
-    async (phone: string, pin: string): Promise<boolean> => {
+    async (email: string, password: string): Promise<boolean> => {
       if (apiModeRef.current) {
         try {
           const res = await apiFetch<{ accessToken: string; user: ApiUser }>("/auth/login", {
             method: "POST",
-            body: { identifier: phone, pin },
+            body: { email: email.trim().toLowerCase(), password },
             auth: false,
           });
           setToken(res.accessToken);
@@ -372,9 +394,9 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return false;
         }
       }
-      const cleanPhone = phone.replace(/[^0-9]/g, "");
+      const cleanEmail = email.trim().toLowerCase();
       const foundUser = users.find(
-        (u) => u.phone.replace(/[^0-9]/g, "") === cleanPhone || u.phone === phone
+        (u) => u.email?.trim().toLowerCase() === cleanEmail
       );
       if (foundUser) {
         setCurrentUserId(foundUser.id);
@@ -387,12 +409,12 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const loginMember = useCallback(
-    (phone: string, pin: string) => login(phone, pin),
+    (email: string, password: string) => login(email, password),
     [login]
   );
 
   const loginSuperAdmin = useCallback(
-    (emailOrPhone: string, pin: string) => login(emailOrPhone, pin),
+    (email: string, password: string) => login(email, password),
     [login]
   );
 
@@ -549,8 +571,40 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
-  const createPoll = useCallback(
-    async (date: string, mealType: MealType, cutoffTime: string) => {
+  const updateMessCurrency = useCallback(
+    async (currency: string) => {
+      const trimmed = currency.trim();
+      if (!trimmed) return;
+      if (apiModeRef.current) {
+        const updated = await apiFetch<{ currency: string }>("/mess/current", {
+          method: "PATCH",
+          body: { currency: trimmed },
+        });
+        setMess((prev) => ({ ...prev, currency: updated.currency }));
+        return;
+      }
+      setMess((prev) => ({ ...prev, currency: trimmed }));
+    },
+    []
+  );
+
+  const updateMessLogo = useCallback(
+    async (logoUrl: string) => {
+      const trimmed = logoUrl.trim();
+      if (apiModeRef.current) {
+        const updated = await apiFetch<{ logoUrl: string | null }>("/mess/current", {
+          method: "PATCH",
+          body: { logoUrl: trimmed },
+        });
+        setMess((prev) => ({ ...prev, logoUrl: updated.logoUrl ?? undefined }));
+        return;
+      }
+      setMess((prev) => ({ ...prev, logoUrl: trimmed || undefined }));
+    },
+    []
+  );
+
+  const createPoll = useCallback(    async (date: string, mealType: MealType, cutoffTime: string) => {
       if (apiModeRef.current) {
         await apiFetch("/polls", { method: "POST", body: { date, mealType, cutoffTime } });
         await refreshPollsAndAudit();
@@ -799,8 +853,250 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [users, mess.id, currentUser, logAuditLocal]
   );
 
-  const resetToDemoData = useCallback(() => {
-    clearToken();
+  const closePoll = useCallback(
+    async (pollId: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/polls/${pollId}/close`, { method: "PATCH" });
+        await refreshPollsAndAudit();
+        return;
+      }
+      setPolls((prev) => prev.map((p) => (p.id === pollId ? { ...p, isOpen: false } : p)));
+      logAuditLocal("POLL_CLOSED", `Closed meal poll ${pollId}`, currentUser);
+    },
+    [refreshPollsAndAudit, currentUser, logAuditLocal]
+  );
+
+  const deletePoll = useCallback(
+    async (pollId: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/polls/${pollId}`, { method: "DELETE" });
+        await refreshPollsAndAudit();
+        return;
+      }
+      setPolls((prev) => prev.filter((p) => p.id !== pollId));
+      logAuditLocal("POLL_REMOVED", `Removed meal poll ${pollId}`, currentUser);
+    },
+    [refreshPollsAndAudit, currentUser, logAuditLocal]
+  );
+
+  const updateBazarCost = useCallback(
+    async (id: string, patch: Partial<Pick<BazarCost, "amount" | "description" | "paidById" | "receiptUrl" | "date">>) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/costs/bazar/${id}`, { method: "PATCH", body: patch });
+        const list = await apiFetch<Array<Record<string, unknown>>>("/costs/bazar");
+        setBazarCosts(
+          list.map((c) => {
+            const paidBy = c.paidBy as { id: string; name: string } | undefined;
+            return {
+              id: String(c.id),
+              messId: String(c.messId),
+              date: String(c.date).slice(0, 10),
+              amount: Number(c.amount),
+              description: String(c.description),
+              receiptUrl: (c.receiptUrl as string | null) ?? undefined,
+              paidById: String(c.paidById),
+              paidByName: paidBy?.name,
+              createdAt: String(c.createdAt),
+            } as BazarCost;
+          })
+        );
+        return;
+      }
+      setBazarCosts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+      logAuditLocal("BAZAR_COST_UPDATED", `Updated Bazar expense ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const deleteBazarCost = useCallback(
+    async (id: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/costs/bazar/${id}`, { method: "DELETE" });
+        setBazarCosts((prev) => prev.filter((c) => c.id !== id));
+        return;
+      }
+      setBazarCosts((prev) => prev.filter((c) => c.id !== id));
+      logAuditLocal("BAZAR_COST_REMOVED", `Removed Bazar expense ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const updateUtilityCost = useCallback(
+    async (id: string, patch: Partial<Pick<UtilityCost, "title" | "amount" | "category" | "paidById" | "month" | "receiptUrl">>) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/costs/utility/${id}`, { method: "PATCH", body: patch });
+        const list = await apiFetch<Array<Record<string, unknown>>>("/costs/utility");
+        setUtilityCosts(
+          list.map((c) => {
+            const paidBy = c.paidBy as { id: string; name: string } | undefined;
+            return {
+              id: String(c.id),
+              messId: String(c.messId),
+              month: String(c.month),
+              category: c.category as CostCategory,
+              title: String(c.title),
+              amount: Number(c.amount),
+              paidById: String(c.paidById),
+              paidByName: paidBy?.name,
+              receiptUrl: (c.receiptUrl as string | null) ?? undefined,
+              createdAt: String(c.createdAt),
+            } as UtilityCost;
+          })
+        );
+        return;
+      }
+      setUtilityCosts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+      logAuditLocal("UTILITY_COST_UPDATED", `Updated Utility cost ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const deleteUtilityCost = useCallback(
+    async (id: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/costs/utility/${id}`, { method: "DELETE" });
+        setUtilityCosts((prev) => prev.filter((c) => c.id !== id));
+        return;
+      }
+      setUtilityCosts((prev) => prev.filter((c) => c.id !== id));
+      logAuditLocal("UTILITY_COST_REMOVED", `Removed Utility cost ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const updateDeposit = useCallback(
+    async (id: string, patch: Partial<Pick<Deposit, "userId" | "amount" | "method" | "note">>) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/deposits/${id}`, { method: "PATCH", body: patch });
+        const list = await apiFetch<Array<Record<string, unknown>>>("/deposits");
+        setDeposits(
+          list.map((d) => {
+            const member = d.user as { id: string; name: string } | undefined;
+            return {
+              id: String(d.id),
+              messId: String(d.messId),
+              userId: String(d.userId),
+              userName: member?.name,
+              amount: Number(d.amount),
+              date: String(d.date).slice(0, 10),
+              method: d.method as Deposit["method"],
+              note: (d.note as string | null) ?? undefined,
+            } as Deposit;
+          })
+        );
+        return;
+      }
+      setDeposits((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+      logAuditLocal("DEPOSIT_UPDATED", `Updated deposit ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const deleteDeposit = useCallback(
+    async (id: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/deposits/${id}`, { method: "DELETE" });
+        setDeposits((prev) => prev.filter((d) => d.id !== id));
+        return;
+      }
+      setDeposits((prev) => prev.filter((d) => d.id !== id));
+      logAuditLocal("DEPOSIT_REMOVED", `Removed deposit ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const updateRosterEntry = useCallback(
+    async (id: string, patch: Partial<Pick<BazarRoster, "userId" | "startDate" | "endDate" | "status">>) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/roster/${id}`, { method: "PATCH", body: patch });
+        const list = await apiFetch<Array<Record<string, unknown>>>("/roster");
+        setRoster(
+          list.map((r) => {
+            const member = r.user as { id: string; name: string } | undefined;
+            return {
+              id: String(r.id),
+              messId: String(r.messId),
+              userId: String(r.userId),
+              userName: member?.name,
+              startDate: String(r.startDate).slice(0, 10),
+              endDate: String(r.endDate).slice(0, 10),
+              status: r.status as BazarRoster["status"],
+            } as BazarRoster;
+          })
+        );
+        return;
+      }
+      setRoster((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+      logAuditLocal("ROSTER_UPDATED", `Updated Bazar duty ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const deleteRosterEntry = useCallback(
+    async (id: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/roster/${id}`, { method: "DELETE" });
+        setRoster((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      setRoster((prev) => prev.filter((r) => r.id !== id));
+      logAuditLocal("ROSTER_REMOVED", `Removed Bazar duty ${id}`, currentUser);
+    },
+    [currentUser, logAuditLocal]
+  );
+
+  const updateMember = useCallback(
+    async (id: string, patch: Partial<Pick<User, "name" | "phone" | "email" | "role">>) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/users/${id}`, { method: "PATCH", body: patch });
+        const list = await apiFetch<ApiUser[]>("/users");
+        setUsers(list.map((u) => mapUser(u, mess.id)));
+        return;
+      }
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+      logAuditLocal("MEMBER_UPDATED", `Updated member ${id}`, currentUser);
+    },
+    [mess.id, currentUser, logAuditLocal]
+  );
+
+  const deleteMember = useCallback(
+    async (id: string) => {
+      if (apiModeRef.current) {
+        await apiFetch(`/users/${id}`, { method: "DELETE" });
+        const list = await apiFetch<ApiUser[]>("/users");
+        setUsers(list.map((u) => mapUser(u, mess.id)));
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      logAuditLocal("MEMBER_REMOVED", `Removed member ${id}`, currentUser);
+    },
+    [mess.id, currentUser, logAuditLocal]
+  );
+
+  const addMember = useCallback(
+    async (name: string, phone: string, email: string, password: string, role: Role) => {
+      if (apiModeRef.current) {
+        await apiFetch("/users", { method: "POST", body: { name, phone, email, password, role } });
+        const list = await apiFetch<ApiUser[]>("/users");
+        setUsers(list.map((u) => mapUser(u, mess.id)));
+        return;
+      }
+      const newUser: User = {
+        id: `user_${Date.now()}`,
+        name,
+        phone,
+        email,
+        role,
+        messId: mess.id,
+        depositBalance: 0,
+      };
+      setUsers((prev) => [...prev, newUser]);
+      logAuditLocal("MEMBER_ADDED", `Enrolled ${name} (${phone})`, currentUser);
+    },
+    [mess.id, currentUser, logAuditLocal]
+  );
+
+  const resetToDemoData = useCallback(() => {    clearToken();
     apiModeRef.current = false;
     setApiMode(false);
     setMess(INITIAL_MESS);
@@ -848,12 +1144,27 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         utilityPerMember,
         memberSummaries,
         updateMessName,
+        updateMessCurrency,
+        updateMessLogo,
         createPoll,
+        closePoll,
+        deletePoll,
         castVote,
         addBazarCost,
+        updateBazarCost,
+        deleteBazarCost,
         addUtilityCost,
+        updateUtilityCost,
+        deleteUtilityCost,
         addDeposit,
+        updateDeposit,
+        deleteDeposit,
         assignBazarRoster,
+        updateRosterEntry,
+        deleteRosterEntry,
+        updateMember,
+        addMember,
+        deleteMember,
         resetToDemoData,
       }}
     >

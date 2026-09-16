@@ -9,11 +9,15 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Plus, CreditCard, CheckCircle2, ArrowUpRight, ArrowDownLeft, ShieldCheck } from "lucide-react";
+import { Wallet, Plus, CreditCard, CheckCircle2, ArrowUpRight, ArrowDownLeft, ShieldCheck, PiggyBank, ReceiptText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { StatsCards } from "@/components/Dashboard/StatsCards";
+import { RowActions } from "@/components/ui/row-actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Deposit } from "@/lib/types";
 
 export const DepositLedger: React.FC = () => {
-  const { deposits, addDeposit, memberSummaries, users, currentUser } = useMess();
+  const { deposits, addDeposit, updateDeposit, deleteDeposit, memberSummaries, users, currentUser } = useMess();
   const { t } = useLanguage();
 
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
@@ -21,6 +25,47 @@ export const DepositLedger: React.FC = () => {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<"bKash" | "Nagad" | "Rocket" | "Cash" | "Bank">("bKash");
   const [note, setNote] = useState("");
+
+  // Edit / Delete state
+  const [editingDeposit, setEditingDeposit] = useState<Deposit | null>(null);
+  const [editUser, setEditUser] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editMethod, setEditMethod] = useState<"bKash" | "Nagad" | "Rocket" | "Cash" | "Bank">("bKash");
+  const [editNote, setEditNote] = useState("");
+  const [deleteDepositId, setDeleteDepositId] = useState<string | null>(null);
+  const [formError, setFormError] = useState("");
+
+  const totalDeposited = deposits.reduce((sum, d) => sum + d.amount, 0);
+  const totalDue = memberSummaries.filter((m) => m.netBalance < 0).reduce((sum, m) => sum + Math.abs(m.netBalance), 0);
+  const totalSurplus = memberSummaries.filter((m) => m.netBalance >= 0).reduce((sum, m) => sum + m.netBalance, 0);
+
+  const openEditDeposit = (dep: Deposit) => {
+    setEditingDeposit(dep);
+    setEditUser(dep.userId);
+    setEditAmount(String(dep.amount));
+    setEditMethod(dep.method);
+    setEditNote(dep.note ?? "");
+    setFormError("");
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDeposit) return;
+    const amountNum = parseFloat(editAmount);
+    if (!amountNum || amountNum <= 0) return;
+    setFormError("");
+    try {
+      await updateDeposit(editingDeposit.id, {
+        userId: editUser,
+        amount: amountNum,
+        method: editMethod,
+        note: editNote,
+      });
+      setEditingDeposit(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to update deposit.");
+    }
+  };
 
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +96,40 @@ export const DepositLedger: React.FC = () => {
           <Plus className="h-4 w-4" /> {t.deposits.addDeposit}
         </Button>
       </div>
+
+      {/* Stats */}
+      <StatsCards
+        items={[
+          {
+            title: "Total Deposited",
+            value: formatCurrency(totalDeposited),
+            subtext: `${deposits.length} transactions`,
+            icon: Wallet,
+            color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400",
+          },
+          {
+            title: "Pending Dues",
+            value: formatCurrency(totalDue),
+            subtext: "To be collected",
+            icon: ArrowDownLeft,
+            color: "from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-400",
+          },
+          {
+            title: "Total Surplus",
+            value: formatCurrency(totalSurplus),
+            subtext: "Advance balance",
+            icon: PiggyBank,
+            color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-400",
+          },
+          {
+            title: "Members",
+            value: String(memberSummaries.length),
+            subtext: "Enrolled",
+            icon: ReceiptText,
+            color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400",
+          },
+        ]}
+      />
 
       {/* Member Balances Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -104,6 +183,7 @@ export const DepositLedger: React.FC = () => {
                   <th className="py-3 px-3">Method</th>
                   <th className="py-3 px-3">Ref ID / Note</th>
                   <th className="py-3 px-3 text-right">Amount</th>
+                  <th className="py-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -127,6 +207,9 @@ export const DepositLedger: React.FC = () => {
                     <td className="py-3 px-3 text-slate-300 font-mono">{dep.note || "N/A"}</td>
                     <td className="py-3 px-3 text-right font-bold text-emerald-400 text-sm">
                       +{formatCurrency(dep.amount)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <RowActions onEdit={() => openEditDeposit(dep)} onDelete={() => setDeleteDepositId(dep.id)} />
                     </td>
                   </tr>
                 ))}
@@ -186,6 +269,73 @@ export const DepositLedger: React.FC = () => {
           </div>
         </form>
       </Dialog>
+
+      {/* Edit Deposit Modal */}
+      <Dialog
+        isOpen={!!editingDeposit}
+        onClose={() => setEditingDeposit(null)}
+        title="Edit Deposit"
+        description="Update this deposit transaction."
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+              {formError}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Select Member</label>
+            <Select value={editUser} onChange={(e) => setEditUser(e.target.value)}>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.phone})
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Deposit Amount (BDT ৳)</label>
+            <Input type="number" step="0.01" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">{t.deposits.paymentMethod}</label>
+            <Select value={editMethod} onChange={(e) => setEditMethod(e.target.value as any)}>
+              <option value="bKash">bKash (MFS)</option>
+              <option value="Nagad">Nagad (MFS)</option>
+              <option value="Rocket">Rocket (MFS)</option>
+              <option value="Cash">Hand Cash</option>
+              <option value="Bank">Bank Transfer</option>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">{t.deposits.note}</label>
+            <Input type="text" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setEditingDeposit(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="emerald">
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteDepositId}
+        title="Delete deposit?"
+        message="This deposit transaction will be permanently removed and balances recalculated."
+        onCancel={() => setDeleteDepositId(null)}
+        onConfirm={async () => {
+          if (deleteDepositId) await deleteDeposit(deleteDepositId);
+          setDeleteDepositId(null);
+        }}
+      />
     </div>
   );
 };

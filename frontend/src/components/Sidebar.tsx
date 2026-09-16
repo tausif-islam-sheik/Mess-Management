@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   LayoutDashboard,
+  Users,
   Vote,
   Receipt,
   Wallet,
   CalendarDays,
   FileSpreadsheet,
   History,
+  Settings,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -20,12 +22,14 @@ export const Sidebar: React.FC = () => {
 
   const navItems: { href: string; label: string; icon: React.FC<{ className?: string }> }[] = [
     { href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: "/members", label: t.nav.members, icon: Users },
     { href: "/polls", label: t.nav.polls, icon: Vote },
     { href: "/costs", label: t.nav.costs, icon: Receipt },
     { href: "/deposits", label: t.nav.deposits, icon: Wallet },
     { href: "/roster", label: t.nav.roster, icon: CalendarDays },
     { href: "/reports", label: t.nav.reports, icon: FileSpreadsheet },
     { href: "/audit", label: t.nav.audit, icon: History },
+    { href: "/settings", label: t.nav.settings, icon: Settings },
   ];
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -57,12 +61,12 @@ export const Sidebar: React.FC = () => {
 
         {/* Footer info card */}
         <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-3.5 text-xs text-slate-400">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold mb-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            WhatsApp Integration Active
+          <div className="flex items-center gap-2 text-amber-400 font-bold mb-1">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            WhatsApp Integration — Coming Soon
           </div>
           <p className="text-[11px] leading-relaxed text-slate-400">
-            Automated daily meal polls & monthly report exports ready.
+            Automated daily meal polls & monthly report sharing via WhatsApp is coming soon.
           </p>
         </div>
       </aside>

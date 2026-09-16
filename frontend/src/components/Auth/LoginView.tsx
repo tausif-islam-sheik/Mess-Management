@@ -2,31 +2,25 @@
 
 import React, { useState } from "react";
 import { useMess } from "@/context/MessContext";
-import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Lock, Phone, ShieldCheck, Sparkles, User, KeyRound, LogIn, ArrowRight } from "lucide-react";
+import { Mail, KeyRound, LogIn, ArrowRight, ShieldCheck } from "lucide-react";
 
 export const LoginView: React.FC = () => {
-  const { login, users } = useMess();
-  const { t } = useLanguage();
+  const { login } = useMess();
 
-  const [phone, setPhone] = useState("+8801711223344");
-  const [pin, setPin] = useState("1234");
+  const [email, setEmail] = useState("admin@messmanager.com");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const success = await login(phone, pin);
+    const success = await login(email, password);
     if (!success) {
-      setError("Invalid phone number or PIN. Try one of the demo accounts below!");
+      setError("Invalid email or password. Please try again.");
     }
-  };
-
-  const handleQuickLogin = (uPhone: string) => {
-    login(uPhone, "1234");
   };
 
   return (
@@ -34,11 +28,11 @@ export const LoginView: React.FC = () => {
       <div className="max-w-md w-full space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold text-3xl shadow-xl shadow-emerald-950/60 mb-1">
-            🍽️
+          <div className="inline-flex h-14 w-14 items-center justify-center mb-1">
+            <img src="/logo.svg" alt="MessManager logo" className="h-14 w-14 rounded-2xl shadow-xl shadow-emerald-950/60" />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Shanti Nibash Hostel Mess</h1>
-          <p className="text-xs text-slate-400">Sign in with your registered phone number & 4-digit PIN</p>
+          <p className="text-xs text-slate-400">Sign in with your registered email & password</p>
         </div>
 
         {/* Login Card */}
@@ -61,27 +55,26 @@ export const LoginView: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-emerald-400" /> Phone Number / Mobile
+                  <Mail className="h-3.5 w-3.5 text-emerald-400" /> Email Address
                 </label>
                 <Input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+8801XXXXXXXXX"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> 4-Digit Security PIN
+                  <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> Password
                 </label>
                 <Input
                   type="password"
-                  maxLength={4}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   required
                 />
               </div>
@@ -91,36 +84,13 @@ export const LoginView: React.FC = () => {
               </Button>
             </form>
 
-            {/* Quick Demo Login Presets */}
-            <div className="mt-6 pt-6 border-t border-slate-800">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">
-                Instant Demo 1-Click Login:
-              </p>
-              <div className="space-y-2">
-                {users.slice(0, 3).map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickLogin(u.phone)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800 hover:border-slate-700 transition-all text-xs text-left"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={u.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
-                        alt={u.name}
-                        className="h-7 w-7 rounded-full border border-slate-700 object-cover"
-                      />
-                      <div>
-                        <div className="font-bold text-white text-xs">{u.name}</div>
-                        <div className="text-[10px] text-slate-400">{u.phone}</div>
-                      </div>
-                    </div>
-
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      {u.role.replace("_", " ")}
-                    </span>
-                  </button>
-                ))}
+            {/* Demo credentials hint */}
+            <div className="mt-6 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+              <div className="text-slate-400 font-bold flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Default Super Admin:
               </div>
+              <div className="text-[11px] text-slate-300 font-mono">Email: admin@messmanager.com</div>
+              <div className="text-[11px] text-slate-300 font-mono">Password: Admin@123</div>
             </div>
           </CardContent>
         </Card>

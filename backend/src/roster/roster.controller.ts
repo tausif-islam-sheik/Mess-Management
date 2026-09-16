@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { CurrentUser, RequestUser } from '../auth/current-user.decorator';
 import { CreateRosterDto } from './dto/create-roster.dto';
+import { UpdateRosterDto } from './dto/update-roster.dto';
 import { RosterService } from './roster.service';
 
 @Controller('roster')
@@ -24,5 +25,19 @@ export class RosterController {
     @Body() body: { status: string },
   ) {
     return this.roster.setStatus(user.messId ?? '', user.sub, id, body.status);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateRosterDto,
+  ) {
+    return this.roster.update(user.messId ?? '', user.sub, id, dto);
+  }
+
+  @Delete(':id')
+  remove(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.roster.remove(user.messId ?? '', user.sub, id);
   }
 }

@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { useMess } from "@/context/MessContext";
-import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, KeyRound, LogIn, ArrowRight, UserCheck } from "lucide-react";
+import { Mail, KeyRound, ArrowRight, UserCheck } from "lucide-react";
 
 interface MemberLoginProps {
   onSwitchToAdmin: () => void;
@@ -14,16 +13,16 @@ interface MemberLoginProps {
 
 export const MemberLoginView: React.FC<MemberLoginProps> = ({ onSwitchToAdmin }) => {
   const { loginMember } = useMess();
-  const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const success = await loginMember(phone, pin);
+    const success = await loginMember(email, password);
     if (!success) {
-      setError("Member not found for this phone number. Please contact your Mess Manager to enroll your phone number.");
+      setError("No account found for this email. Please contact your Mess Manager to enroll your email address.");
     }
   };
 
@@ -52,27 +51,26 @@ export const MemberLoginView: React.FC<MemberLoginProps> = ({ onSwitchToAdmin })
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5 text-emerald-400" /> Phone Number / Mobile
+              <Mail className="h-3.5 w-3.5 text-emerald-400" /> Email Address
             </label>
             <Input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+8801XXXXXXXXX"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               required
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> 4-Digit Security PIN
+              <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> Password
             </label>
             <Input
               type="password"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
             />
           </div>

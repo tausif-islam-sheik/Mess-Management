@@ -10,4 +10,8 @@ export class UpdateMessDto {
   @IsString()
   @MinLength(1)
   currency?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }

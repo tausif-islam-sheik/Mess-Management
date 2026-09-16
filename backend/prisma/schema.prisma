@@ -31,8 +31,9 @@ model User {
   id             String        @id @default(cuid())
   name           String
   phone          String        @unique
-  email          String?
+  email          String?       @unique
   pin            String          @default("1234")
+  password       String?
   role           Role          @default(MEMBER)
   messId         String?
   mess           Mess?         @relation(fields: [messId], references: [id])
@@ -52,6 +53,7 @@ model Mess {
   name           String
   currency       String          @default("BDT")
   managerId      String
+  logoUrl        String?
   members        User[]
   polls          MealPoll[]
   bazarCosts     BazarCost[]

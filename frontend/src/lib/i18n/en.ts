@@ -3,6 +3,7 @@ export const en = {
   appSubtitle: "Hostel & Shared Mess Management System",
   nav: {
     dashboard: "Dashboard",
+    members: "Members",
     polls: "Meal Polls",
     costs: "Cost Management",
     deposits: "Deposits & Dues",
@@ -37,7 +38,7 @@ export const en = {
   },
   polls: {
     title: "Daily Meal Polls",
-    subtitle: "Automated WhatsApp meal counting polls",
+    subtitle: "Daily meal counting polls (WhatsApp integration coming soon)",
     createNew: "Create New Poll",
     openPolls: "Active Polls",
     closedPolls: "Past Polls",

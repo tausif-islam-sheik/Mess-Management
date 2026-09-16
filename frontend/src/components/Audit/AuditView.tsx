@@ -4,12 +4,18 @@ import React from "react";
 import { useMess } from "@/context/MessContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { History, ShieldCheck, User, Clock } from "lucide-react";
+import { History, ShieldCheck, User, Clock, ListOrdered, Users } from "lucide-react";
 import { formatTime, formatDate } from "@/lib/utils";
+import { StatsCards } from "@/components/Dashboard/StatsCards";
 
 export const AuditView: React.FC = () => {
   const { auditLogs } = useMess();
   const { t } = useLanguage();
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCount = auditLogs.filter((l) => String(l.createdAt).slice(0, 10) === todayStr).length;
+  const actorCount = new Set(auditLogs.map((l) => l.actorId)).size;
+  const latest = auditLogs[0];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -21,6 +27,40 @@ export const AuditView: React.FC = () => {
         </h2>
         <p className="text-xs sm:text-sm text-slate-400">{t.audit.subtitle}</p>
       </div>
+
+      {/* Stats */}
+      <StatsCards
+        items={[
+          {
+            title: "Total Events",
+            value: String(auditLogs.length),
+            subtext: "Logged actions",
+            icon: ListOrdered,
+            color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-400",
+          },
+          {
+            title: "Today",
+            value: String(todayCount),
+            subtext: "Events today",
+            icon: Clock,
+            color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400",
+          },
+          {
+            title: "Active Actors",
+            value: String(actorCount),
+            subtext: "Members + system",
+            icon: Users,
+            color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400",
+          },
+          {
+            title: "Latest Action",
+            value: latest ? latest.action.replaceAll("_", " ") : "—",
+            subtext: latest ? `${latest.actorName}` : "No events yet",
+            icon: ShieldCheck,
+            color: "from-purple-500/20 to-indigo-500/10 border-purple-500/30 text-purple-400",
+          },
+        ]}
+      />
 
       {/* Logs Table */}
       <Card>

@@ -5,7 +5,7 @@ import { useMess } from "@/context/MessContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ShieldAlert, Mail, Lock, KeyRound, ArrowRight, ShieldCheck } from "lucide-react";
+import { ShieldAlert, Mail, KeyRound, ArrowRight, ShieldCheck } from "lucide-react";
 
 interface SuperAdminLoginProps {
   onSwitchToMember: () => void;
@@ -13,16 +13,16 @@ interface SuperAdminLoginProps {
 
 export const SuperAdminLoginView: React.FC<SuperAdminLoginProps> = ({ onSwitchToMember }) => {
   const { loginSuperAdmin } = useMess();
-  const [emailOrPhone, setEmailOrPhone] = useState("admin@messmanager.com");
-  const [pin, setPin] = useState("9999");
+  const [email, setEmail] = useState("admin@messmanager.com");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const success = await loginSuperAdmin(emailOrPhone, pin);
+    const success = await loginSuperAdmin(email, password);
     if (!success) {
-      setError("Invalid Super Admin credentials. Use admin@messmanager.com / +8801999999999 with PIN 9999.");
+      setError("Invalid Super Admin credentials. Use admin@messmanager.com with password Admin@123.");
     }
   };
 
@@ -51,27 +51,26 @@ export const SuperAdminLoginView: React.FC<SuperAdminLoginProps> = ({ onSwitchTo
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5 text-indigo-400" /> Admin Email or Phone
+              <Mail className="h-3.5 w-3.5 text-indigo-400" /> Admin Email
             </label>
             <Input
-              type="text"
-              value={emailOrPhone}
-              onChange={(e) => setEmailOrPhone(e.target.value)}
-              placeholder="admin@messmanager.com or +8801999999999"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@messmanager.com"
               required
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> Super Admin Security PIN
+              <KeyRound className="h-3.5 w-3.5 text-cyan-400" /> Password
             </label>
             <Input
               type="password"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="9999"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
             />
           </div>
@@ -86,8 +85,8 @@ export const SuperAdminLoginView: React.FC<SuperAdminLoginProps> = ({ onSwitchTo
           <div className="text-slate-400 font-bold flex items-center gap-1">
             <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" /> Default Super Admin Credentials:
           </div>
-          <div className="text-[11px] text-slate-300 font-mono">Email / Phone: admin@messmanager.com</div>
-          <div className="text-[11px] text-slate-300 font-mono">PIN: 9999</div>
+          <div className="text-[11px] text-slate-300 font-mono">Email: admin@messmanager.com</div>
+          <div className="text-[11px] text-slate-300 font-mono">Password: Admin@123</div>
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-800 text-center">
