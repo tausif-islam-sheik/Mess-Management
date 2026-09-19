@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { StatsCards } from "@/components/Dashboard/StatsCards";
 import { RowActions } from "@/components/ui/row-actions";
@@ -43,9 +42,6 @@ const getInitials = (name: string) =>
     .slice(0, 2)
     .join("")
     .toUpperCase();
-
-const roleBadgeVariant = (role: Role) =>
-  role === "MANAGER" ? "amber" : role === "BAZAR_MANAGER" ? "indigo" : "default";
 
 export const MembersView: React.FC = () => {
   const { users, memberSummaries, currentUser, addMember, updateMember, deleteMember } = useMess();
@@ -176,15 +172,6 @@ export const MembersView: React.FC = () => {
               )}
             </div>
           );
-        },
-      },
-      {
-        id: "role",
-        accessorFn: (row) => row.user.role,
-        header: "Role",
-        cell: ({ row }) => {
-          const role = row.original.user.role;
-          return <Badge variant={roleBadgeVariant(role)}>{role.replace("_", " ")}</Badge>;
         },
       },
       {

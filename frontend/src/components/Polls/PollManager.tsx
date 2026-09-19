@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Vote, Plus, Share2, MessageSquare, Check, X, Clock, ExternalLink, Send, CheckCircle2, Users, BarChart3, Trash2, Lock } from "lucide-react";
 import { MealType } from "@/lib/types";
@@ -274,7 +275,7 @@ export const PollManager: React.FC = () => {
           )}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Poll Date</label>
-            <Input type="date" value={pollDate} onChange={(e) => setPollDate(e.target.value)} required />
+            <DatePicker value={pollDate} onChange={setPollDate} />
           </div>
 
           <div>

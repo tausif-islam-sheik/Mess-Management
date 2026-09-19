@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus, UserCheck, ShieldAlert, CheckCircle2, Clock, ListOrdered } from "lucide-react";
@@ -214,12 +214,12 @@ export const BazarRosterView: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Duty Start Date</label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            <DatePicker value={startDate} onChange={setStartDate} />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Duty End Date</label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+            <DatePicker value={endDate} onChange={setEndDate} />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
@@ -259,12 +259,12 @@ export const BazarRosterView: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Duty Start Date</label>
-            <Input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)} required />
+            <DatePicker value={editStart} onChange={setEditStart} />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Duty End Date</label>
-            <Input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} required />
+            <DatePicker value={editEnd} onChange={setEditEnd} />
           </div>
 
           <div>

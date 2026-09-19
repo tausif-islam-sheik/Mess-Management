@@ -1,5 +1,64 @@
 import * as XLSX from "xlsx";
 import { MemberSummary, BazarCost, UtilityCost } from "./types";
+import { ReportColumn } from "./monthly-report";
+
+export interface FixedChargeRow {
+  user: { id: string; name: string };
+  monthly: number;
+  carry: number;
+  meal: number;
+  paid: number;
+  balance: number;
+}
+
+export function exportFixedChargeReportToExcel(
+  monthYear: string,
+  messName: string,
+  columns: ReportColumn[],
+  rows: FixedChargeRow[],
+  totals: { perColumn: Record<string, number>; monthly: number; carry: number; meal: number; paid: number; balance: number },
+  getCell?: (userId: string, columnId: string) => number
+) {
+  const workbook = XLSX.utils.book_new();
+  const header = [
+    "Name",
+    ...columns.map((c) => c.title),
+    "Monthly Charge",
+    "Carryover Due",
+    "Meal Utility",
+    "Amount Paid",
+    "Balance Due",
+  ];
+  const body = rows.map((r) => [
+    r.user.name,
+    ...columns.map((c) => (getCell ? getCell(r.user.id, c.id) || "" : "")),
+    r.monthly || "",
+    r.carry || "",
+    r.meal || "",
+    r.paid || "",
+    r.balance || "",
+  ]);
+  const totalRow = [
+    "Total",
+    ...columns.map((c) => totals.perColumn[c.id] || ""),
+    totals.monthly || "",
+    totals.carry || "",
+    totals.meal || "",
+    totals.paid || "",
+    totals.balance || "",
+  ];
+  const sheet = XLSX.utils.aoa_to_sheet([
+    [`MONTHLY FIXED-CHARGE STATEMENT`, monthYear.toUpperCase()],
+    ["Mess Name", messName],
+    ["Generated At", new Date().toLocaleString()],
+    [],
+    header,
+    ...body,
+    totalRow,
+  ]);
+  XLSX.utils.book_append_sheet(workbook, sheet, "Monthly Sheet");
+  XLSX.writeFile(workbook, `${messName.replace(/\s+/g, "_")}_Monthly_Sheet_${monthYear.replace(/\s+/g, "_")}.xlsx`);
+}
 
 export function exportMonthlyReportToExcel(
   monthYear: string,
